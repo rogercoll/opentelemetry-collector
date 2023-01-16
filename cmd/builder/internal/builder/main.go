@@ -60,6 +60,19 @@ func Generate(cfg Config) error {
 		return fmt.Errorf("failed to create output path: %w", err)
 	}
 
+	cfg.Logger.Info(cfg.Distribution.CustomTemplates.Main)
+	if cfg.Distribution.CustomTemplates.Main != "" {
+		dat, err := os.ReadFile(cfg.Distribution.CustomTemplates.Main)
+		if err != nil {
+			return fmt.Errorf("failed read custom template: %w", err)
+		}
+		mainTemplate = parseTemplate(cfg.Distribution.CustomTemplates.Main, dat)
+		cfg.Logger.Info("Main template overrided")
+	}
+	if cfg.Distribution.CustomTemplates.MainOthers != "" {
+		mainOthersTemplate = parseTemplate(cfg.Distribution.CustomTemplates.MainOthers, mainOthersBytes)
+	}
+
 	for _, tmpl := range []*template.Template{
 		mainTemplate,
 		mainOthersTemplate,
@@ -136,7 +149,7 @@ func GetModules(cfg Config) error {
 }
 
 func processAndWrite(cfg Config, tmpl *template.Template, outFile string, tmplParams interface{}) error {
-	out, err := os.Create(filepath.Clean(filepath.Join(cfg.Distribution.OutputPath, outFile)))
+	out, err := os.Create(filepath.Clean(filepath.Join(cfg.Distribution.OutputPath, filepath.Base(outFile))))
 	if err != nil {
 		return err
 	}

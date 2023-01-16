@@ -168,6 +168,7 @@ func applyCfgFromFile(flags *flag.FlagSet, cfgFromFile builder.Config) {
 	cfg.Processors = cfgFromFile.Processors
 	cfg.Replaces = cfgFromFile.Replaces
 	cfg.Excludes = cfgFromFile.Excludes
+	cfg.Distribution.CustomTemplates = cfgFromFile.Distribution.CustomTemplates
 
 	if !flags.Changed(skipCompilationFlag) && cfgFromFile.SkipCompilation {
 		cfg.SkipCompilation = cfgFromFile.SkipCompilation
