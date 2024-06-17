@@ -1,0 +1,22 @@
+receivers:
+  filelog:
+    include: foo.log
+processors:
+  batch:
+exporters:
+  template/my_otlp_template:
+    domain: localhost
+
+service:
+  pipelines:
+    logs:
+      receivers: [filelog]
+      processors: [batch]
+      exporters: [template/my_otlp_template]
+
+templates:
+    my_otlp_template:
+      exporters: |
+        otlp:
+          endpoint: {{ .domain }}:4317
+          compression: none

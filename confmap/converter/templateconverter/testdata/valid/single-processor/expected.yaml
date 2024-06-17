@@ -1,0 +1,16 @@
+receivers:
+  filelog:
+    include: foo.log
+processors:
+  batch:
+  batch/01:
+exporters:
+  otlp:
+    endpoint: localhost:4317
+
+service:
+  pipelines:
+    logs:
+      receivers: [filelog]
+      processors: [batch, batch/01]
+      exporters: [otlp]

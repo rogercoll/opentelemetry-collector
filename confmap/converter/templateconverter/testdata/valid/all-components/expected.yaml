@@ -1,0 +1,22 @@
+receivers:
+  filelog/bar:
+    include: bar.log
+  filelog/foo:
+    include: foo.log
+processors:
+  batch/1:
+  batch/2:
+exporters:
+  otlp:
+    endpoint: localhost:4317
+    compression: none
+
+service:
+  pipelines:
+    logs:
+      receivers: [filelog/bar, filelog/foo]
+      processors: [batch/1, batch/2]
+      exporters: [otlp]
+    metrics/no_processors:
+      receivers: [filelog/bar, filelog/foo]
+      exporters: [otlp]

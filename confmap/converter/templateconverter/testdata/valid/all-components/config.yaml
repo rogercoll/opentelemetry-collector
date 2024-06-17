@@ -1,0 +1,34 @@
+receivers:
+  template/my_filelog_template:
+    my_foo_file: foo.log
+    my_bar_file: bar.log
+processors:
+  template/my_filelog_template:
+exporters:
+  template/my_filelog_template:
+    domain: localhost
+
+service:
+  pipelines:
+    logs:
+      receivers: [template/my_filelog_template]
+      processors: [template/my_filelog_template]
+      exporters: [template/my_filelog_template]
+    metrics/no_processors:
+      receivers: [template/my_filelog_template]
+      exporters: [template/my_filelog_template]
+
+templates:
+    my_filelog_template:
+      receivers: |
+        filelog/foo:
+          include: {{ .my_foo_file }}
+        filelog/bar:
+          include: {{ .my_bar_file }}
+      processors: |
+        batch/1:
+        batch/2:
+      exporters: |
+        otlp:
+          endpoint: {{ .domain }}:4317
+          compression: none
