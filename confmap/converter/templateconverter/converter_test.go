@@ -18,6 +18,7 @@ func TestTemplateConverter(t *testing.T) {
 		"single-exporter",
 		"multiple-receivers-no-pipelines",
 		"all-components",
+		"multiple-templates",
 	} {
 		t.Run(tc, func(t *testing.T) {
 			conf, err := confmaptest.LoadConf(filepath.Join("testdata", "valid", tc, "config.yaml"))
