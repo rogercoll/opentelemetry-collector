@@ -2,6 +2,7 @@ receivers:
   template/my_filelog_template:
     my_foo_file: foo.log
     my_bar_file: bar.log
+    extended_cpu_metrics: true
 processors:
   batch:
 exporters:
@@ -22,3 +23,19 @@ templates:
           include: {{ .my_foo_file }}
         filelog/bar:
           include: {{ .my_bar_file }}
+        hostmetrics:
+          collection_interval: 20s
+          scrapers:
+            cpu:
+              {{- if .extended_cpu_metrics }}
+              metrics:
+                system.cpu.utilization:
+                  enabled: true
+                system.cpu.physical.count:
+                  enabled: true
+                system.cpu.logical.count:
+                  enabled: true
+                system.cpu.frequency:
+                  enabled: true
+              {{- end }}
+            load:

@@ -1,0 +1,92 @@
+receivers:
+  filelog/bar:
+    include: bar.log
+  filelog/foo:
+    include: foo.log
+  hostmetrics:
+    collection_interval: 20s
+    scrapers:
+      cpu:
+      load:
+      memory:
+        metrics:
+          system.memory.utilization:
+            enabled: true
+      paging:
+        metrics:
+          system.paging.utilization:
+            enabled: false
+          system.paging.faults:
+            enabled: false
+      filesystem:
+        metrics:
+          system.filesystem.utilization:
+            enabled: true
+      disk:
+        metrics:
+          system.disk.pending_operations:
+            enabled: false
+          system.disk.weighted_io_time:
+            enabled: false
+      network:
+        metrics:
+          system.network.connections:
+            enabled: false
+      processes:
+      process:
+        metrics:
+          process.cpu.utilization:
+            enabled: true
+processors:
+  batch/1:
+  batch/2:
+  metricstransform:
+    transforms:
+      - include: system.cpu.utilization
+        action: update
+        operations:
+          - action: aggregate_labels
+            label_set: [ state ]
+            aggregation_type: mean
+      - include: system.paging.operations
+        action: update
+        operations:
+          - action: aggregate_labels
+            label_set: [ direction ]
+            aggregation_type: sum
+  resourcedetection:
+    detectors: ["env", "system"]
+    system:
+      hostname_sources: ["os"]
+      resource_attributes:
+        host.id:
+          enabled: true
+exporters:
+  debug:
+    verbosity: detailed
+  otlp/apm:
+    endpoint: apm.endpoint
+    compression: none
+    headers:
+      Authorization: "Bearer hello"
+  otlp:
+    endpoint: localhost:4317
+    compression: none
+
+service:
+  pipelines:
+    logs:
+      receivers: [filelog/bar, filelog/foo]
+      processors: [batch/1, batch/2]
+      exporters: [otlp]
+    metrics/no_processors:
+      receivers: [filelog/bar, filelog/foo]
+      exporters: [otlp]
+    logs/my_logs_from_template_components:
+        receivers: [filelog/bar]
+        processors: [batch/1, batch/2]
+        exporters: [otlp]
+    metrics/hostmetrics_otlp_templates:
+      receivers: [hostmetrics]
+      processors: [metricstransform, resourcedetection]
+      exporters: [debug, otlp/apm]

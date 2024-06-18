@@ -3,6 +3,20 @@ receivers:
     include: bar.log
   filelog/foo:
     include: foo.log
+  hostmetrics:
+    collection_interval: 20s
+    scrapers:
+      cpu:
+        metrics:
+          system.cpu.utilization:
+            enabled: true
+          system.cpu.physical.count:
+            enabled: true
+          system.cpu.logical.count:
+            enabled: true
+          system.cpu.frequency:
+            enabled: true
+      load:
 processors:
   batch:
 exporters:
@@ -12,6 +26,6 @@ exporters:
 service:
   pipelines:
     logs:
-      receivers: [filelog/bar, filelog/foo]
+      receivers: [filelog/bar, filelog/foo, hostmetrics]
       processors: [batch]
       exporters: [otlp]

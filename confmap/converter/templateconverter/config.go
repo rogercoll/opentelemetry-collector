@@ -42,7 +42,7 @@ func (id *instanceID) withPrefix(prefix string) string {
 
 type templateConfig = map[string]any
 
-func newTemplateConfig(id *instanceID, tmpl *template.Template, parameters any) (*templateConfig, error) {
+func newTemplateConfig(tmpl *template.Template, parameters any) (*templateConfig, error) {
 	var rendered bytes.Buffer
 	var err error
 	if err = tmpl.Execute(&rendered, parameters); err != nil {

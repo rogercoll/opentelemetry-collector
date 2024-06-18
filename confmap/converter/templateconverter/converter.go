@@ -59,12 +59,46 @@ func (c *converter) expandComponents(componentType string) error {
 			return fmt.Errorf("template type %q not found", id.tmplType)
 		}
 
-		cfg, err := newTemplateConfig(id, tmpl[componentType], parameters)
+		cfg, err := newTemplateConfig(tmpl[componentType], parameters)
 		if err != nil {
 			return err
 		}
 
 		c.expandTemplate(componentType, cfg, id)
+	}
+	return nil
+}
+
+func (c *converter) expandPipeline() error {
+	pipelinesMap, ok := c.cfg["service"].(map[string]any)["pipelines"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	for templateID, parameters := range pipelinesMap {
+		if !strings.HasPrefix(templateID, "template") {
+			continue
+		}
+
+		id, err := newInstanceID(templateID)
+		if err != nil {
+			return err
+		}
+
+		tmpl, ok := c.templates[id.tmplType]
+		if !ok {
+			return fmt.Errorf("template type %q not found", id.tmplType)
+		}
+
+		cfg, err := newTemplateConfig(tmpl["pipelines"], parameters)
+		if err != nil {
+			return err
+		}
+
+		delete(c.cfg["service"].(map[string]any)["pipelines"].(map[string]any), id.withPrefix("template"))
+
+		for componentID, componentCfg := range *cfg {
+			c.cfg["service"].(map[string]any)["pipelines"].(map[string]any)[componentID] = componentCfg
+		}
 	}
 	return nil
 }
@@ -118,8 +152,14 @@ func (c *converter) Convert(_ context.Context, conf *confmap.Conf) error {
 
 	c.cfg = conf.ToStringMap()
 
+	// expand pipelines templates
+	err := c.expandPipeline()
+	if err != nil {
+		return err
+	}
+
 	// replace receivers configurations + pipeline usages
-	err := c.expandComponents("receivers")
+	err = c.expandComponents("receivers")
 	if err != nil {
 		return err
 	}
@@ -176,11 +216,13 @@ func (c *converter) parseTemplates(conf *confmap.Conf) error {
 		receiverGroup, _ := strToComponentsTemplate("receivers", componentsRawTemplate)
 		processorGroup, _ := strToComponentsTemplate("processors", componentsRawTemplate)
 		exportersGroup, _ := strToComponentsTemplate("exporters", componentsRawTemplate)
+		pipelinesGroup, _ := strToComponentsTemplate("pipelines", componentsRawTemplate)
 
 		c.templates[templateName] = map[string]*template.Template{
 			"receivers":  receiverGroup,
 			"processors": processorGroup,
 			"exporters":  exportersGroup,
+			"pipelines":  pipelinesGroup,
 		}
 
 	}

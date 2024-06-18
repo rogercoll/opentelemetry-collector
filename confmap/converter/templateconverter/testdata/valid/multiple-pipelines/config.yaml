@@ -1,0 +1,128 @@
+receivers:
+  template/my_filelog_template:
+    my_foo_file: foo.log
+    my_bar_file: bar.log
+  template/my_hostmetrics_template:
+processors:
+  template/my_filelog_template:
+  template/my_hostmetrics_template:
+exporters:
+  template/my_filelog_template:
+    domain: localhost
+  template/my_otlp_template:
+    apm_endpoint: apm.endpoint
+    apm_token: hello
+
+service:
+  pipelines:
+    template/my_filelog_template:
+    logs/my_logs_from_template_components:
+      receivers: [filelog/bar]
+      processors: [batch/1, batch/2]
+      exporters: [otlp]
+    metrics/hostmetrics_otlp_templates:
+      receivers: [template/my_hostmetrics_template]
+      processors: [template/my_hostmetrics_template]
+      exporters: [template/my_otlp_template]
+
+
+templates:
+  my_filelog_template:
+    receivers: |
+      filelog/foo:
+        include: {{ .my_foo_file }}
+      filelog/bar:
+        include: {{ .my_bar_file }}
+    processors: |
+      batch/1:
+      batch/2:
+    exporters: |
+      otlp:
+        endpoint: {{ .domain }}:4317
+        compression: none
+    pipelines: |
+      logs:
+        receivers: [filelog/bar, filelog/foo]
+        processors: [batch/1, batch/2]
+        exporters: [otlp]
+      metrics/no_processors:
+        receivers: [filelog/bar, filelog/foo]
+        exporters: [otlp]
+  my_hostmetrics_template:
+    receivers: |
+      hostmetrics:
+        collection_interval: 20s
+        scrapers:
+          cpu:
+            {{- if .ExtendedCPU }}
+            metrics:
+              system.cpu.utilization:
+                enabled: true
+              system.cpu.physical.count:
+                enabled: true
+              system.cpu.logical.count:
+                enabled: true
+              system.cpu.frequency:
+                enabled: true
+            {{- end }}
+          load:
+          memory:
+            metrics:
+              system.memory.utilization:
+                enabled: true
+          paging:
+            metrics:
+              system.paging.utilization:
+                enabled: false
+              system.paging.faults:
+                enabled: false
+          filesystem:
+            metrics:
+              system.filesystem.utilization:
+                enabled: true
+          disk:
+            metrics:
+              system.disk.pending_operations:
+                enabled: false
+              system.disk.weighted_io_time:
+                enabled: false
+          network:
+            metrics:
+              system.network.connections:
+                enabled: false
+          processes:
+          process:
+            metrics:
+              process.cpu.utilization:
+                enabled: true
+    processors: |
+        metricstransform:
+          transforms:
+            - include: system.cpu.utilization
+              action: update
+              operations:
+                - action: aggregate_labels
+                  label_set: [ state ]
+                  aggregation_type: mean
+            - include: system.paging.operations
+              action: update
+              operations:
+                - action: aggregate_labels
+                  label_set: [ direction ]
+                  aggregation_type: sum
+        resourcedetection:
+          detectors: ["env", "system"]
+          system:
+            hostname_sources: ["os"]
+            resource_attributes:
+              host.id:
+                enabled: true
+  my_otlp_template:
+    exporters: |
+      debug:
+        verbosity: detailed
+      otlp/apm:
+        endpoint: {{ .apm_endpoint }}
+        compression: none
+        headers:
+          Authorization: "Bearer {{ .apm_token }}"
