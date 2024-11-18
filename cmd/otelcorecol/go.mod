@@ -31,6 +31,7 @@ require (
 	go.opentelemetry.io/collector/receiver v0.111.0
 	go.opentelemetry.io/collector/receiver/nopreceiver v0.111.0
 	go.opentelemetry.io/collector/receiver/otlpreceiver v0.111.0
+	go.opentelemetry.io/collector/receiver/servicereceiver v0.111.0
 	golang.org/x/sys v0.25.0
 )
 
@@ -254,6 +255,8 @@ replace go.opentelemetry.io/collector/receiver => ../../receiver
 replace go.opentelemetry.io/collector/receiver/nopreceiver => ../../receiver/nopreceiver
 
 replace go.opentelemetry.io/collector/receiver/otlpreceiver => ../../receiver/otlpreceiver
+
+replace go.opentelemetry.io/collector/receiver/servicereceiver => ../../receiver/servicereceiver
 
 replace go.opentelemetry.io/collector/receiver/receiverprofiles => ../../receiver/receiverprofiles
 
