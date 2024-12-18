@@ -156,7 +156,7 @@ func (g *Graph) addProcessor(host *Host, pipelineID pipeline.ID, procID componen
 	// prepend the new procNode
 	g.pipelines[pipelineID].processors = append([]*processorNode{procNode}, g.pipelines[pipelineID].processors...)
 
-	// CREATE EDGE
+	// CREATE EDGE AND MODIFY EDGES
 	var to graph.Node
 	g.componentGraph.SetEdge(g.componentGraph.NewEdge(g.pipelines[pipelineID].capabilitiesNode, procNode))
 
@@ -176,6 +176,73 @@ func (g *Graph) addProcessor(host *Host, pipelineID pipeline.ID, procID componen
 	// START THE COMPONENT
 	g.telemetry.Logger.Info("Starting processor node", zap.Int64("nodeID", procNode.ID()))
 	return g.startComponent(host, procNode.nodeID, procNode)
+}
+
+// untested
+func (g *Graph) removeProcessor(reporter status.Reporter, procID component.ID) error {
+	nodes := g.componentGraph.Nodes()
+	for nodes.Next() {
+		node := nodes.Node()
+		comp, ok := node.(*processorNode)
+		if !ok {
+			continue
+		}
+		if comp.componentID == procID {
+			instanceID := g.instanceIDs[node.ID()]
+			reporter.ReportStatus(
+				instanceID,
+				componentstatus.NewEvent(componentstatus.StatusStopping),
+			)
+
+			// REMOVE EDGE AND MODIFY EDGES
+			updateGraphEdges := func(src, dst graph.Node, removeID graph.Node) {
+				g.componentGraph.SetEdge(g.componentGraph.NewEdge(src, dst))
+				g.componentGraph.RemoveEdge(src.ID(), removeID.ID())
+				g.componentGraph.RemoveEdge(removeID.ID(), dst.ID())
+			}
+			pipeline := g.pipelines[comp.pipelineID]
+			if len(g.pipelines[comp.pipelineID].processors) == 1 {
+				updateGraphEdges(pipeline.capabilitiesNode, pipeline.fanOutNode, comp)
+
+				g.pipelines[comp.pipelineID].processors = []*processorNode{}
+			} else {
+				procPos := 0
+				for i, cprocessor := range g.pipelines[comp.pipelineID].processors {
+					if cprocessor.ID() == comp.ID() {
+						procPos = i
+					}
+				}
+
+				if procPos == 0 {
+					updateGraphEdges(pipeline.capabilitiesNode, pipeline.processors[1], comp)
+					g.pipelines[comp.pipelineID].processors = g.pipelines[comp.pipelineID].processors[1:]
+				} else if procPos == len(g.pipelines[comp.pipelineID].processors)-1 {
+					updateGraphEdges(pipeline.processors[procPos-1], pipeline.fanOutNode, comp)
+					g.pipelines[comp.pipelineID].processors = g.pipelines[comp.pipelineID].processors[:len(g.pipelines[comp.pipelineID].processors)-1]
+
+				} else {
+					updateGraphEdges(pipeline.processors[procPos-1], pipeline.processors[procPos+1], comp)
+					g.pipelines[comp.pipelineID].processors = append(g.pipelines[comp.pipelineID].processors[:procPos], g.pipelines[comp.pipelineID].processors[procPos+1:]...)
+				}
+			}
+
+			if compErr := comp.Shutdown(g.ctx); compErr != nil {
+				reporter.ReportStatus(
+					instanceID,
+					componentstatus.NewPermanentErrorEvent(compErr),
+				)
+				return compErr
+			}
+
+			g.componentGraph.RemoveNode(node.ID())
+
+			reporter.ReportStatus(
+				instanceID,
+				componentstatus.NewEvent(componentstatus.StatusStopped),
+			)
+		}
+	}
+	return nil
 }
 
 func (g *Graph) startComponent(host *Host, id nodeID, comp component.Component) error {

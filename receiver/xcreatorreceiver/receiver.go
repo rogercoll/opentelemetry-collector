@@ -108,6 +108,15 @@ func (x *xcreator) Start(ctx context.Context, h component.Host) error {
 	}
 	x.logger.Info(fmt.Sprintf("Xcreator no error on adding processor"))
 
+	go func(id component.ID) {
+		time.Sleep(25 * time.Second)
+		x.logger.Info("Xcreator stopping processor: %s", zap.String("procID", id.String()))
+		err := rcHost.RemoveComponent(component.KindReceiver, id)
+		if err != nil {
+			x.logger.Error(fmt.Sprintf("Xcreator error on removing processor: %s", err.Error()))
+		}
+	}(componentID)
+
 	return nil
 }
 

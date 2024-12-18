@@ -86,7 +86,7 @@ func (host *Host) RemoveComponent(kind component.Kind, compID component.ID) erro
 	case component.KindProcessor:
 		// Processors are always inserted to the front
 		host.Pipelines.settings.ProcessorBuilder.RemoveComponent(compID)
-		return host.Pipelines.removeReceiver(host.Reporter, compID)
+		return host.Pipelines.removeProcessor(host.Reporter, compID)
 	}
 	return nil
 }
