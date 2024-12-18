@@ -1,0 +1,29 @@
+receivers:
+  otlp/manual:
+    protocols:
+      grpc:
+        endpoint: localhost:4319
+      http:
+        endpoint: localhost:4320
+  xcreator:
+
+processors:
+  batch:
+
+exporters:
+  debug:
+    verbosity: detailed
+
+service:
+  telemetry:
+    logs:
+      level: debug
+  pipelines:
+    metrics:
+      receivers:
+        - xcreator
+        - otlp/manual
+      processors:
+        - batch
+      exporters:
+        - debug
