@@ -49,8 +49,8 @@ func newXCreator(settings receiver.Settings) *xcreator {
 // host is an interface that the component.Host passed to receivercreator's Start function must implement
 type host interface {
 	component.Host
-	AddReceiver(ctx context.Context, pipelineID pipeline.ID, recvID component.ID, conf component.Config) error
-	RemoveReceiver(ctx context.Context, recvID component.ID) error
+	AddComponent(pipelineID pipeline.ID, kind component.Kind, compID component.ID, conf component.Config) error
+	RemoveComponent(kind component.Kind, compID component.ID) error
 }
 
 // TODO: It always create an otlp receiver, it should switch to a template
@@ -67,7 +67,7 @@ func (x *xcreator) Start(ctx context.Context, h component.Host) error {
 	cfg := otlpreceiver.NewFactory().CreateDefaultConfig()
 	x.logger.Warn(fmt.Sprintf("(Sub)receiver config: %#v", cfg))
 
-	err := rcHost.AddReceiver(ctx, pipeline.NewID(pipeline.SignalMetrics), componentID, cfg)
+	err := rcHost.AddComponent(pipeline.NewID(pipeline.SignalMetrics), component.KindReceiver, componentID, cfg)
 	if err != nil {
 		x.logger.Error(fmt.Sprintf("Xcreator error on adding receiver: %s", err.Error()))
 		return err
@@ -76,9 +76,9 @@ func (x *xcreator) Start(ctx context.Context, h component.Host) error {
 
 	// TODO: This is just for a quick test of the shutdown
 	go func() {
-		x.logger.Info("Xcreator stopping receiver: %s", zap.String("recvID", componentID.String()))
 		time.Sleep(35 * time.Second)
-		err := rcHost.RemoveReceiver(ctx, componentID)
+		x.logger.Info("Xcreator stopping receiver: %s", zap.String("recvID", componentID.String()))
+		err := rcHost.RemoveComponent(component.KindReceiver, componentID)
 		if err != nil {
 			x.logger.Error(fmt.Sprintf("Xcreator error on removing receiver: %s", err.Error()))
 		}

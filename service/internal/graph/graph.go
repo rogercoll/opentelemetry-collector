@@ -68,6 +68,9 @@ type Graph struct {
 	telemetry component.TelemetrySettings
 
 	settings *Settings
+
+	// components Context
+	ctx context.Context
 }
 
 // Build builds a full pipeline graph.
@@ -79,6 +82,7 @@ func Build(ctx context.Context, set Settings) (*Graph, error) {
 		instanceIDs:    make(map[int64]*componentstatus.InstanceID),
 		telemetry:      set.Telemetry,
 		settings:       &set,
+		ctx:            ctx,
 	}
 	for pipelineID := range set.PipelineConfigs {
 		pipelines.pipelines[pipelineID] = &pipelineNodes{
@@ -94,7 +98,7 @@ func Build(ctx context.Context, set Settings) (*Graph, error) {
 }
 
 // TODO: rename to addAndStart
-func (g *Graph) addReceiver(ctx context.Context, host *Host, pipelineID pipeline.ID, recvID component.ID) error {
+func (g *Graph) addReceiver(host *Host, pipelineID pipeline.ID, recvID component.ID) error {
 	g.telemetry.Logger.Info("Adding new receiver with", zap.String("recvID", recvID.String()))
 	rcvrNode := g.createReceiver(pipelineID, recvID)
 	g.pipelines[pipelineID].receivers[rcvrNode.ID()] = rcvrNode
@@ -102,7 +106,7 @@ func (g *Graph) addReceiver(ctx context.Context, host *Host, pipelineID pipeline
 	// CREATE EDGE
 	g.componentGraph.SetEdge(g.componentGraph.NewEdge(g.pipelines[pipelineID].receivers[rcvrNode.ID()], g.pipelines[pipelineID].capabilitiesNode))
 
-	err := rcvrNode.buildComponent(ctx, g.telemetry, g.settings.BuildInfo, g.settings.ReceiverBuilder, g.nextConsumers(rcvrNode.ID()))
+	err := rcvrNode.buildComponent(g.ctx, g.telemetry, g.settings.BuildInfo, g.settings.ReceiverBuilder, g.nextConsumers(rcvrNode.ID()))
 	if err != nil {
 		return err
 	}
@@ -117,7 +121,7 @@ func (g *Graph) addReceiver(ctx context.Context, host *Host, pipelineID pipeline
 		componentstatus.NewEvent(componentstatus.StatusStarting),
 	)
 
-	if compErr := rcvrNode.Start(ctx, &HostWrapper{Host: host, InstanceID: instanceID}); compErr != nil {
+	if compErr := rcvrNode.Start(g.ctx, &HostWrapper{Host: host, InstanceID: instanceID}); compErr != nil {
 		host.Reporter.ReportStatus(
 			instanceID,
 			componentstatus.NewPermanentErrorEvent(compErr),
@@ -137,7 +141,7 @@ func (g *Graph) addReceiver(ctx context.Context, host *Host, pipelineID pipeline
 	return nil
 }
 
-func (g *Graph) removeReceiver(ctx context.Context, reporter status.Reporter, recvID component.ID) error {
+func (g *Graph) removeReceiver(reporter status.Reporter, recvID component.ID) error {
 	nodes := g.componentGraph.Nodes()
 	for nodes.Next() {
 		node := nodes.Node()
@@ -152,7 +156,7 @@ func (g *Graph) removeReceiver(ctx context.Context, reporter status.Reporter, re
 				componentstatus.NewEvent(componentstatus.StatusStopping),
 			)
 
-			if compErr := comp.Shutdown(ctx); compErr != nil {
+			if compErr := comp.Shutdown(g.ctx); compErr != nil {
 				reporter.ReportStatus(
 					instanceID,
 					componentstatus.NewPermanentErrorEvent(compErr),

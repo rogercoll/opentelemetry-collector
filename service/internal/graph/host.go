@@ -4,7 +4,6 @@
 package graph // import "go.opentelemetry.io/collector/service/internal/graph"
 
 import (
-	"context"
 	"net/http"
 	"path"
 	"runtime"
@@ -66,14 +65,23 @@ func (host *Host) GetFactory(kind component.Kind, componentType component.Type) 
 	return nil
 }
 
-func (host *Host) AddReceiver(ctx context.Context, pipelineID pipeline.ID, recvID component.ID, conf component.Config) error {
-	host.Pipelines.settings.ReceiverBuilder.AddCfg(recvID, conf)
-	return host.Pipelines.addReceiver(ctx, host, pipelineID, recvID)
+func (host *Host) AddComponent(pipelineID pipeline.ID, kind component.Kind, compID component.ID, conf component.Config) error {
+	switch kind {
+	case component.KindReceiver:
+		host.Pipelines.settings.ReceiverBuilder.AddCfg(compID, conf)
+		return host.Pipelines.addReceiver(host, pipelineID, compID)
+	}
+
+	return nil
 }
 
-func (host *Host) RemoveReceiver(ctx context.Context, recvID component.ID) error {
-	host.Pipelines.settings.ReceiverBuilder.RemoveCfg(recvID)
-	return host.Pipelines.removeReceiver(ctx, host.Reporter, recvID)
+func (host *Host) RemoveComponent(kind component.Kind, compID component.ID) error {
+	switch kind {
+	case component.KindReceiver:
+		host.Pipelines.settings.ReceiverBuilder.RemoveCfg(compID)
+		return host.Pipelines.removeReceiver(host.Reporter, compID)
+	}
+	return nil
 }
 
 func (host *Host) GetExtensions() map[component.ID]component.Component {
