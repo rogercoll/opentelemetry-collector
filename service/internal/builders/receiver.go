@@ -29,6 +29,11 @@ func NewReceiver(cfgs map[component.ID]component.Config, factories map[component
 	return &ReceiverBuilder{cfgs: cfgs, factories: factories}
 }
 
+func (b *ReceiverBuilder) AddCfg(recvID component.ID, conf component.Config) {
+	// TODO check if already exists
+	b.cfgs[recvID] = conf
+}
+
 // CreateTraces creates a Traces receiver based on the settings and config.
 func (b *ReceiverBuilder) CreateTraces(ctx context.Context, set receiver.Settings, next consumer.Traces) (receiver.Traces, error) {
 	if next == nil {

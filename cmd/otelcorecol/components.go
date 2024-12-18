@@ -21,6 +21,7 @@ import (
 	"go.opentelemetry.io/collector/receiver"
 	nopreceiver "go.opentelemetry.io/collector/receiver/nopreceiver"
 	otlpreceiver "go.opentelemetry.io/collector/receiver/otlpreceiver"
+	xcreatorreceiver "go.opentelemetry.io/collector/receiver/xcreatorreceiver"
 )
 
 func components() (otelcol.Factories, error) {
@@ -40,6 +41,7 @@ func components() (otelcol.Factories, error) {
 
 	factories.Receivers, err = receiver.MakeFactoryMap(
 		nopreceiver.NewFactory(),
+		xcreatorreceiver.NewFactory(),
 		otlpreceiver.NewFactory(),
 	)
 	if err != nil {

@@ -66,6 +66,8 @@ type Graph struct {
 	instanceIDs map[int64]*componentstatus.InstanceID
 
 	telemetry component.TelemetrySettings
+
+	settings *Settings
 }
 
 // Build builds a full pipeline graph.
@@ -76,6 +78,7 @@ func Build(ctx context.Context, set Settings) (*Graph, error) {
 		pipelines:      make(map[pipeline.ID]*pipelineNodes, len(set.PipelineConfigs)),
 		instanceIDs:    make(map[int64]*componentstatus.InstanceID),
 		telemetry:      set.Telemetry,
+		settings:       &set,
 	}
 	for pipelineID := range set.PipelineConfigs {
 		pipelines.pipelines[pipelineID] = &pipelineNodes{
@@ -88,6 +91,54 @@ func Build(ctx context.Context, set Settings) (*Graph, error) {
 	}
 	pipelines.createEdges()
 	return pipelines, pipelines.buildComponents(ctx, set)
+}
+
+// TODO: rename to addAndStart
+func (g *Graph) addReceiver(ctx context.Context, host *Host, pipelineID pipeline.ID, recvID component.ID) error {
+	g.telemetry.Logger.Info("Adding new receiver with", zap.String("recvID", recvID.String()))
+	rcvrNode := g.createReceiver(pipelineID, recvID)
+	g.pipelines[pipelineID].receivers[rcvrNode.ID()] = rcvrNode
+
+	// CREATE EDGE
+	g.componentGraph.SetEdge(g.componentGraph.NewEdge(g.pipelines[pipelineID].receivers[rcvrNode.ID()], g.pipelines[pipelineID].capabilitiesNode))
+
+	err := rcvrNode.buildComponent(ctx, g.telemetry, g.settings.BuildInfo, g.settings.ReceiverBuilder, g.nextConsumers(rcvrNode.ID()))
+	if err != nil {
+		return err
+	}
+
+	// START THE COMPONENT
+
+	g.telemetry.Logger.Info("Starting receiver node", zap.Int64("nodeID", rcvrNode.ID()))
+
+	instanceID := g.instanceIDs[rcvrNode.ID()]
+	host.Reporter.ReportStatus(
+		instanceID,
+		componentstatus.NewEvent(componentstatus.StatusStarting),
+	)
+
+	if compErr := rcvrNode.Start(ctx, &HostWrapper{Host: host, InstanceID: instanceID}); compErr != nil {
+		host.Reporter.ReportStatus(
+			instanceID,
+			componentstatus.NewPermanentErrorEvent(compErr),
+		)
+		// We log with zap.AddStacktrace(zap.DPanicLevel) to avoid adding the stack trace to the error log
+		g.telemetry.Logger.WithOptions(zap.AddStacktrace(zap.DPanicLevel)).
+			Error("Failed to start component",
+				zap.Error(compErr),
+				zap.String("type", instanceID.Kind().String()),
+				zap.String("id", instanceID.ComponentID().String()),
+			)
+		return compErr
+	}
+
+	host.Reporter.ReportOKIfStarting(instanceID)
+
+	return nil
+}
+
+func (g *Graph) removeReceiver(ctx context.Context, host *Host, pipelineID pipeline.ID, recvID component.ID) error {
+	return nil
 }
 
 // Creates a node for each instance of a component and adds it to the graph.

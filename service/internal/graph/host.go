@@ -4,6 +4,7 @@
 package graph // import "go.opentelemetry.io/collector/service/internal/graph"
 
 import (
+	"context"
 	"net/http"
 	"path"
 	"runtime"
@@ -63,6 +64,11 @@ func (host *Host) GetFactory(kind component.Kind, componentType component.Type) 
 		return host.Extensions.Factory(componentType)
 	}
 	return nil
+}
+
+func (host *Host) AddReceiver(ctx context.Context, pipelineID pipeline.ID, recvID component.ID, conf component.Config) error {
+	host.Pipelines.settings.ReceiverBuilder.AddCfg(recvID, conf)
+	return host.Pipelines.addReceiver(ctx, host, pipelineID, recvID)
 }
 
 func (host *Host) GetExtensions() map[component.ID]component.Component {
