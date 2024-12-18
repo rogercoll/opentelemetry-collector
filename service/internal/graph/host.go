@@ -68,8 +68,11 @@ func (host *Host) GetFactory(kind component.Kind, componentType component.Type) 
 func (host *Host) AddComponent(pipelineID pipeline.ID, kind component.Kind, compID component.ID, conf component.Config) error {
 	switch kind {
 	case component.KindReceiver:
-		host.Pipelines.settings.ReceiverBuilder.AddCfg(compID, conf)
+		host.Pipelines.settings.ReceiverBuilder.AddComponent(compID, conf)
 		return host.Pipelines.addReceiver(host, pipelineID, compID)
+	case component.KindProcessor:
+		host.Pipelines.settings.ProcessorBuilder.AddComponent(compID, conf)
+		return host.Pipelines.addProcessor(host, pipelineID, compID)
 	}
 
 	return nil
@@ -78,7 +81,11 @@ func (host *Host) AddComponent(pipelineID pipeline.ID, kind component.Kind, comp
 func (host *Host) RemoveComponent(kind component.Kind, compID component.ID) error {
 	switch kind {
 	case component.KindReceiver:
-		host.Pipelines.settings.ReceiverBuilder.RemoveCfg(compID)
+		host.Pipelines.settings.ReceiverBuilder.RemoveComponent(compID)
+		return host.Pipelines.removeReceiver(host.Reporter, compID)
+	case component.KindProcessor:
+		// Processors are always inserted to the front
+		host.Pipelines.settings.ProcessorBuilder.RemoveComponent(compID)
 		return host.Pipelines.removeReceiver(host.Reporter, compID)
 	}
 	return nil

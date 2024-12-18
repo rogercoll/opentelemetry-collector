@@ -19,13 +19,16 @@ import (
 // ProcessorBuilder processor is a helper struct that given a set of Configs
 // and Factories helps with creating processors.
 type ProcessorBuilder struct {
-	cfgs      map[component.ID]component.Config
+	ConfigStore
 	factories map[component.Type]processor.Factory
 }
 
 // NewProcessor creates a new ProcessorBuilder to help with creating components form a set of configs and factories.
 func NewProcessor(cfgs map[component.ID]component.Config, factories map[component.Type]processor.Factory) *ProcessorBuilder {
-	return &ProcessorBuilder{cfgs: cfgs, factories: factories}
+	if cfgs == nil {
+		cfgs = make(map[component.ID]component.Config)
+	}
+	return &ProcessorBuilder{ConfigStore: cfgs, factories: factories}
 }
 
 // CreateTraces creates a Traces processor based on the settings and config.
@@ -33,7 +36,7 @@ func (b *ProcessorBuilder) CreateTraces(ctx context.Context, set processor.Setti
 	if next == nil {
 		return nil, errNilNextConsumer
 	}
-	cfg, existsCfg := b.cfgs[set.ID]
+	cfg, existsCfg := b.ConfigStore[set.ID]
 	if !existsCfg {
 		return nil, fmt.Errorf("processor %q is not configured", set.ID)
 	}
@@ -52,7 +55,7 @@ func (b *ProcessorBuilder) CreateMetrics(ctx context.Context, set processor.Sett
 	if next == nil {
 		return nil, errNilNextConsumer
 	}
-	cfg, existsCfg := b.cfgs[set.ID]
+	cfg, existsCfg := b.ConfigStore[set.ID]
 	if !existsCfg {
 		return nil, fmt.Errorf("processor %q is not configured", set.ID)
 	}
@@ -71,7 +74,7 @@ func (b *ProcessorBuilder) CreateLogs(ctx context.Context, set processor.Setting
 	if next == nil {
 		return nil, errNilNextConsumer
 	}
-	cfg, existsCfg := b.cfgs[set.ID]
+	cfg, existsCfg := b.ConfigStore[set.ID]
 	if !existsCfg {
 		return nil, fmt.Errorf("processor %q is not configured", set.ID)
 	}
@@ -90,7 +93,7 @@ func (b *ProcessorBuilder) CreateProfiles(ctx context.Context, set processor.Set
 	if next == nil {
 		return nil, errNilNextConsumer
 	}
-	cfg, existsCfg := b.cfgs[set.ID]
+	cfg, existsCfg := b.ConfigStore[set.ID]
 	if !existsCfg {
 		return nil, fmt.Errorf("processor %q is not configured", set.ID)
 	}

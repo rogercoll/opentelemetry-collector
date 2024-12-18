@@ -26,3 +26,19 @@ func logStabilityLevel(logger *zap.Logger, sl component.StabilityLevel) {
 		logger.Info(sl.LogMessage())
 	}
 }
+
+// type ConfigStore struct {
+// 	cfgs map[component.ID]component.Config
+// }
+
+type ConfigStore map[component.ID]component.Config
+
+func (c ConfigStore) AddComponent(recvID component.ID, conf component.Config) {
+	// TODO check if already exists
+	c[recvID] = conf
+}
+
+func (c ConfigStore) RemoveComponent(recvID component.ID) {
+	// TODO check if already exists
+	delete(c, recvID)
+}

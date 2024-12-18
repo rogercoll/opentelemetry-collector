@@ -19,24 +19,14 @@ import (
 // ReceiverBuilder receiver is a helper struct that given a set of Configs and
 // Factories helps with creating receivers.
 type ReceiverBuilder struct {
-	cfgs      map[component.ID]component.Config
+	ConfigStore
 	factories map[component.Type]receiver.Factory
 }
 
 // NewReceiver creates a new ReceiverBuilder to help with creating
 // components form a set of configs and factories.
 func NewReceiver(cfgs map[component.ID]component.Config, factories map[component.Type]receiver.Factory) *ReceiverBuilder {
-	return &ReceiverBuilder{cfgs: cfgs, factories: factories}
-}
-
-func (b *ReceiverBuilder) AddCfg(recvID component.ID, conf component.Config) {
-	// TODO check if already exists
-	b.cfgs[recvID] = conf
-}
-
-func (b *ReceiverBuilder) RemoveCfg(recvID component.ID) {
-	// TODO check if already exists
-	delete(b.cfgs, recvID)
+	return &ReceiverBuilder{ConfigStore: cfgs, factories: factories}
 }
 
 // CreateTraces creates a Traces receiver based on the settings and config.
@@ -44,7 +34,7 @@ func (b *ReceiverBuilder) CreateTraces(ctx context.Context, set receiver.Setting
 	if next == nil {
 		return nil, errNilNextConsumer
 	}
-	cfg, existsCfg := b.cfgs[set.ID]
+	cfg, existsCfg := b.ConfigStore[set.ID]
 	if !existsCfg {
 		return nil, fmt.Errorf("receiver %q is not configured", set.ID)
 	}
@@ -63,7 +53,7 @@ func (b *ReceiverBuilder) CreateMetrics(ctx context.Context, set receiver.Settin
 	if next == nil {
 		return nil, errNilNextConsumer
 	}
-	cfg, existsCfg := b.cfgs[set.ID]
+	cfg, existsCfg := b.ConfigStore[set.ID]
 	if !existsCfg {
 		return nil, fmt.Errorf("receiver %q is not configured", set.ID)
 	}
@@ -82,7 +72,7 @@ func (b *ReceiverBuilder) CreateLogs(ctx context.Context, set receiver.Settings,
 	if next == nil {
 		return nil, errNilNextConsumer
 	}
-	cfg, existsCfg := b.cfgs[set.ID]
+	cfg, existsCfg := b.ConfigStore[set.ID]
 	if !existsCfg {
 		return nil, fmt.Errorf("receiver %q is not configured", set.ID)
 	}
@@ -101,7 +91,7 @@ func (b *ReceiverBuilder) CreateProfiles(ctx context.Context, set receiver.Setti
 	if next == nil {
 		return nil, errNilNextConsumer
 	}
-	cfg, existsCfg := b.cfgs[set.ID]
+	cfg, existsCfg := b.ConfigStore[set.ID]
 	if !existsCfg {
 		return nil, fmt.Errorf("receiver %q is not configured", set.ID)
 	}

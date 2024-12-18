@@ -12,6 +12,7 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pipeline"
+	"go.opentelemetry.io/collector/processor/batchprocessor"
 	"go.opentelemetry.io/collector/receiver"
 	"go.opentelemetry.io/collector/receiver/otlpreceiver"
 	"go.opentelemetry.io/collector/receiver/xcreatorreceiver/internal/metadata"
@@ -62,7 +63,7 @@ func (x *xcreator) Start(ctx context.Context, h component.Host) error {
 		return errors.New("the receivercreator is not compatible with the provided component.host")
 	}
 
-	// OTLP
+	// OTLP receiver
 	componentID := component.NewID(otlpreceiver.NewFactory().Type())
 	cfg := otlpreceiver.NewFactory().CreateDefaultConfig()
 	x.logger.Warn(fmt.Sprintf("(Sub)receiver config: %#v", cfg))
@@ -73,16 +74,40 @@ func (x *xcreator) Start(ctx context.Context, h component.Host) error {
 		return err
 	}
 	x.logger.Info(fmt.Sprintf("Xcreator no error on adding receiver"))
-
 	// TODO: This is just for a quick test of the shutdown
-	go func() {
+	go func(id component.ID) {
 		time.Sleep(35 * time.Second)
-		x.logger.Info("Xcreator stopping receiver: %s", zap.String("recvID", componentID.String()))
-		err := rcHost.RemoveComponent(component.KindReceiver, componentID)
+		x.logger.Info("Xcreator stopping receiver: %s", zap.String("recvID", id.String()))
+		err := rcHost.RemoveComponent(component.KindReceiver, id)
 		if err != nil {
 			x.logger.Error(fmt.Sprintf("Xcreator error on removing receiver: %s", err.Error()))
 		}
-	}()
+	}(componentID)
+
+	// Batch processor (batch/dynamic)
+	componentID = component.NewIDWithName(batchprocessor.NewFactory().Type(), "dynamic")
+	cfg = batchprocessor.NewFactory().CreateDefaultConfig()
+	x.logger.Warn(fmt.Sprintf("(Sub)receiver config: %#v", cfg))
+
+	err = rcHost.AddComponent(pipeline.NewID(pipeline.SignalMetrics), component.KindProcessor, componentID, cfg)
+	if err != nil {
+		x.logger.Error(fmt.Sprintf("Xcreator error on adding processor: %s", err.Error()))
+		return err
+	}
+	x.logger.Info(fmt.Sprintf("Xcreator no error on adding processor"))
+
+	// Batch processor (batch/dynamic)
+	componentID = component.NewIDWithName(batchprocessor.NewFactory().Type(), "dynamic/2")
+	cfg = batchprocessor.NewFactory().CreateDefaultConfig()
+	x.logger.Warn(fmt.Sprintf("(Sub)receiver config: %#v", cfg))
+
+	err = rcHost.AddComponent(pipeline.NewID(pipeline.SignalMetrics), component.KindProcessor, componentID, cfg)
+	if err != nil {
+		x.logger.Error(fmt.Sprintf("Xcreator error on adding processor: %s", err.Error()))
+		return err
+	}
+	x.logger.Info(fmt.Sprintf("Xcreator no error on adding processor"))
+
 	return nil
 }
 

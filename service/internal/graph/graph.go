@@ -112,33 +112,8 @@ func (g *Graph) addReceiver(host *Host, pipelineID pipeline.ID, recvID component
 	}
 
 	// START THE COMPONENT
-
 	g.telemetry.Logger.Info("Starting receiver node", zap.Int64("nodeID", rcvrNode.ID()))
-
-	instanceID := g.instanceIDs[rcvrNode.ID()]
-	host.Reporter.ReportStatus(
-		instanceID,
-		componentstatus.NewEvent(componentstatus.StatusStarting),
-	)
-
-	if compErr := rcvrNode.Start(g.ctx, &HostWrapper{Host: host, InstanceID: instanceID}); compErr != nil {
-		host.Reporter.ReportStatus(
-			instanceID,
-			componentstatus.NewPermanentErrorEvent(compErr),
-		)
-		// We log with zap.AddStacktrace(zap.DPanicLevel) to avoid adding the stack trace to the error log
-		g.telemetry.Logger.WithOptions(zap.AddStacktrace(zap.DPanicLevel)).
-			Error("Failed to start component",
-				zap.Error(compErr),
-				zap.String("type", instanceID.Kind().String()),
-				zap.String("id", instanceID.ComponentID().String()),
-			)
-		return compErr
-	}
-
-	host.Reporter.ReportOKIfStarting(instanceID)
-
-	return nil
+	return g.startComponent(host, rcvrNode.nodeID, rcvrNode)
 }
 
 func (g *Graph) removeReceiver(reporter status.Reporter, recvID component.ID) error {
@@ -172,6 +147,60 @@ func (g *Graph) removeReceiver(reporter status.Reporter, recvID component.ID) er
 			)
 		}
 	}
+	return nil
+}
+
+func (g *Graph) addProcessor(host *Host, pipelineID pipeline.ID, procID component.ID) error {
+	g.telemetry.Logger.Info("Prepending a new processor with", zap.String("procID", procID.String()))
+	procNode := g.createProcessor(pipelineID, procID)
+	// prepend the new procNode
+	g.pipelines[pipelineID].processors = append([]*processorNode{procNode}, g.pipelines[pipelineID].processors...)
+
+	// CREATE EDGE
+	var to graph.Node
+	g.componentGraph.SetEdge(g.componentGraph.NewEdge(g.pipelines[pipelineID].capabilitiesNode, procNode))
+
+	if len(g.pipelines[pipelineID].processors) > 1 {
+		to = g.pipelines[pipelineID].processors[1]
+	} else {
+		to = g.pipelines[pipelineID].fanOutNode
+	}
+	g.componentGraph.SetEdge(g.componentGraph.NewEdge(procNode, to))
+	g.componentGraph.RemoveEdge(g.pipelines[pipelineID].capabilitiesNode.ID(), to.ID())
+
+	err := procNode.buildComponent(g.ctx, g.settings.Telemetry, g.settings.BuildInfo, g.settings.ProcessorBuilder, g.nextConsumers(procNode.ID())[0])
+	if err != nil {
+		return err
+	}
+
+	// START THE COMPONENT
+	g.telemetry.Logger.Info("Starting processor node", zap.Int64("nodeID", procNode.ID()))
+	return g.startComponent(host, procNode.nodeID, procNode)
+}
+
+func (g *Graph) startComponent(host *Host, id nodeID, comp component.Component) error {
+	instanceID := g.instanceIDs[id.ID()]
+	host.Reporter.ReportStatus(
+		instanceID,
+		componentstatus.NewEvent(componentstatus.StatusStarting),
+	)
+
+	if compErr := comp.Start(g.ctx, &HostWrapper{Host: host, InstanceID: instanceID}); compErr != nil {
+		host.Reporter.ReportStatus(
+			instanceID,
+			componentstatus.NewPermanentErrorEvent(compErr),
+		)
+		// We log with zap.AddStacktrace(zap.DPanicLevel) to avoid adding the stack trace to the error log
+		g.telemetry.Logger.WithOptions(zap.AddStacktrace(zap.DPanicLevel)).
+			Error("Failed to start component",
+				zap.Error(compErr),
+				zap.String("type", instanceID.Kind().String()),
+				zap.String("id", instanceID.ComponentID().String()),
+			)
+		return compErr
+	}
+
+	host.Reporter.ReportOKIfStarting(instanceID)
 	return nil
 }
 

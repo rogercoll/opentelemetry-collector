@@ -8,7 +8,6 @@ receivers:
   xcreator:
 
 processors:
-  batch:
 
 exporters:
   debug:
@@ -16,6 +15,13 @@ exporters:
 
 service:
   telemetry:
+    metrics:
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: '0.0.0.0'
+                port: 8888
     logs:
       level: debug
   pipelines:
@@ -24,6 +30,5 @@ service:
         - xcreator
         - otlp/manual
       processors:
-        - batch
       exporters:
         - debug
