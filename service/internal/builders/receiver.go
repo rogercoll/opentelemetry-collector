@@ -34,6 +34,11 @@ func (b *ReceiverBuilder) AddCfg(recvID component.ID, conf component.Config) {
 	b.cfgs[recvID] = conf
 }
 
+func (b *ReceiverBuilder) RemoveCfg(recvID component.ID) {
+	// TODO check if already exists
+	delete(b.cfgs, recvID)
+}
+
 // CreateTraces creates a Traces receiver based on the settings and config.
 func (b *ReceiverBuilder) CreateTraces(ctx context.Context, set receiver.Settings, next consumer.Traces) (receiver.Traces, error) {
 	if next == nil {

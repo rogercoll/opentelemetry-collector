@@ -71,6 +71,11 @@ func (host *Host) AddReceiver(ctx context.Context, pipelineID pipeline.ID, recvI
 	return host.Pipelines.addReceiver(ctx, host, pipelineID, recvID)
 }
 
+func (host *Host) RemoveReceiver(ctx context.Context, recvID component.ID) error {
+	host.Pipelines.settings.ReceiverBuilder.RemoveCfg(recvID)
+	return host.Pipelines.removeReceiver(ctx, host.Reporter, recvID)
+}
+
 func (host *Host) GetExtensions() map[component.ID]component.Component {
 	return host.ServiceExtensions.GetExtensions()
 }

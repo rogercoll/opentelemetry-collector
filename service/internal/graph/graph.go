@@ -137,7 +137,37 @@ func (g *Graph) addReceiver(ctx context.Context, host *Host, pipelineID pipeline
 	return nil
 }
 
-func (g *Graph) removeReceiver(ctx context.Context, host *Host, pipelineID pipeline.ID, recvID component.ID) error {
+func (g *Graph) removeReceiver(ctx context.Context, reporter status.Reporter, recvID component.ID) error {
+	nodes := g.componentGraph.Nodes()
+	for nodes.Next() {
+		node := nodes.Node()
+		comp, ok := node.(*receiverNode)
+		if !ok {
+			continue
+		}
+		if comp.componentID == recvID {
+			instanceID := g.instanceIDs[node.ID()]
+			reporter.ReportStatus(
+				instanceID,
+				componentstatus.NewEvent(componentstatus.StatusStopping),
+			)
+
+			if compErr := comp.Shutdown(ctx); compErr != nil {
+				reporter.ReportStatus(
+					instanceID,
+					componentstatus.NewPermanentErrorEvent(compErr),
+				)
+				return compErr
+			}
+
+			g.componentGraph.RemoveNode(node.ID())
+
+			reporter.ReportStatus(
+				instanceID,
+				componentstatus.NewEvent(componentstatus.StatusStopped),
+			)
+		}
+	}
 	return nil
 }
 
