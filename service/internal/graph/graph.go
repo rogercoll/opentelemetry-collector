@@ -154,7 +154,9 @@ func (g *Graph) addProcessor(host *Host, pipelineID pipeline.ID, procID componen
 	g.telemetry.Logger.Info("Prepending a new processor with", zap.String("procID", procID.String()))
 	procNode := g.createProcessor(pipelineID, procID)
 	// prepend the new procNode
+	g.telemetry.Logger.Info("Processors lenght before prepend", zap.Int("len", len(g.pipelines[pipelineID].processors)))
 	g.pipelines[pipelineID].processors = append([]*processorNode{procNode}, g.pipelines[pipelineID].processors...)
+	g.telemetry.Logger.Info("Processors lenght after prepend", zap.Int("len", len(g.pipelines[pipelineID].processors)))
 
 	// CREATE EDGE AND MODIFY EDGES
 	var to graph.Node
@@ -173,9 +175,42 @@ func (g *Graph) addProcessor(host *Host, pipelineID pipeline.ID, procID componen
 		return err
 	}
 
+	// Update capabilities
+	g.updateCapabilitiesNode(pipelineID)
+
 	// START THE COMPONENT
 	g.telemetry.Logger.Info("Starting processor node", zap.Int64("nodeID", procNode.ID()))
 	return g.startComponent(host, procNode.nodeID, procNode)
+}
+
+func (g *Graph) updateCapabilitiesNode(pipelineID pipeline.ID) {
+	n := g.pipelines[pipelineID].capabilitiesNode
+	capability := consumer.Capabilities{
+		// The fanOutNode represents the aggregate capabilities of the exporters in the pipeline.
+		MutatesData: g.pipelines[n.pipelineID].fanOutNode.getConsumer().Capabilities().MutatesData,
+	}
+	for _, proc := range g.pipelines[n.pipelineID].processors {
+		capability.MutatesData = capability.MutatesData || proc.getConsumer().Capabilities().MutatesData
+	}
+	next := g.nextConsumers(n.ID())[0]
+	switch n.pipelineID.Signal() {
+	case pipeline.SignalTraces:
+		cc := capabilityconsumer.NewTraces(next.(consumer.Traces), capability)
+		n.baseConsumer = cc
+		n.ConsumeTracesFunc = cc.ConsumeTraces
+	case pipeline.SignalMetrics:
+		cc := capabilityconsumer.NewMetrics(next.(consumer.Metrics), capability)
+		n.baseConsumer = cc
+		n.ConsumeMetricsFunc = cc.ConsumeMetrics
+	case pipeline.SignalLogs:
+		cc := capabilityconsumer.NewLogs(next.(consumer.Logs), capability)
+		n.baseConsumer = cc
+		n.ConsumeLogsFunc = cc.ConsumeLogs
+	case xpipeline.SignalProfiles:
+		cc := capabilityconsumer.NewProfiles(next.(xconsumer.Profiles), capability)
+		n.baseConsumer = cc
+		n.ConsumeProfilesFunc = cc.ConsumeProfiles
+	}
 }
 
 // untested
@@ -188,6 +223,7 @@ func (g *Graph) removeProcessor(reporter status.Reporter, procID component.ID) e
 			continue
 		}
 		if comp.componentID == procID {
+			g.telemetry.Logger.Info("Processor to remove found", zap.Int64("nodeID", comp.ID()))
 			instanceID := g.instanceIDs[node.ID()]
 			reporter.ReportStatus(
 				instanceID,
@@ -225,6 +261,9 @@ func (g *Graph) removeProcessor(reporter status.Reporter, procID component.ID) e
 					g.pipelines[comp.pipelineID].processors = append(g.pipelines[comp.pipelineID].processors[:procPos], g.pipelines[comp.pipelineID].processors[procPos+1:]...)
 				}
 			}
+
+			// Update capabilities
+			g.updateCapabilitiesNode(comp.pipelineID)
 
 			if compErr := comp.Shutdown(g.ctx); compErr != nil {
 				reporter.ReportStatus(
