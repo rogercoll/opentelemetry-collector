@@ -98,6 +98,7 @@ func Build(ctx context.Context, set Settings) (*Graph, error) {
 }
 
 // TODO: rename to addAndStart
+// TODO: it should check if the node is already created
 func (g *Graph) addReceiver(host *Host, pipelineID pipeline.ID, recvID component.ID) error {
 	g.telemetry.Logger.Info("Adding new receiver with", zap.String("recvID", recvID.String()))
 	rcvrNode := g.createReceiver(pipelineID, recvID)
@@ -116,6 +117,10 @@ func (g *Graph) addReceiver(host *Host, pipelineID pipeline.ID, recvID component
 	return g.startComponent(host, rcvrNode.nodeID, rcvrNode)
 }
 
+// TODO: it should remove the edge in the corresponding pipeline, if the node
+// does not have any other reference, remove it from the graph
+// This code is partially wrong, pipeline.ID MUST BE PROVIDED to ensure proper
+// removal
 func (g *Graph) removeReceiver(reporter status.Reporter, recvID component.ID) error {
 	nodes := g.componentGraph.Nodes()
 	for nodes.Next() {
