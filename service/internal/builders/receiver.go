@@ -29,6 +29,16 @@ func NewReceiver(cfgs map[component.ID]component.Config, factories map[component
 	return &ReceiverBuilder{cfgs: cfgs, factories: factories}
 }
 
+func (b *ReceiverBuilder) AddCfg(componentID component.ID, cfg component.Config) error {
+	_, existsCfg := b.cfgs[componentID]
+	if !existsCfg {
+		return fmt.Errorf("receiver %q configuration cannot be overriden", componentID)
+	}
+	b.cfgs[componentID] = cfg
+
+	return nil
+}
+
 // CreateTraces creates a Traces receiver based on the settings and config.
 func (b *ReceiverBuilder) CreateTraces(ctx context.Context, set receiver.Settings, next consumer.Traces) (receiver.Traces, error) {
 	if next == nil {

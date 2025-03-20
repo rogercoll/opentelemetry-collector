@@ -26,3 +26,12 @@ type ModuleInfo interface {
 type ExposeExporters interface {
 	GetExporters() map[pipeline.Signal]map[component.ID]component.Component
 }
+
+// PipelineManager is an interface that may be implemented by the host to dynamically
+// add components or remove components of a given pipeline. Only receiver types
+// are supported, function might be generalized if support for other components
+// is added.
+type PipelineManager interface {
+	AddReceiver(pipelineID pipeline.ID, componentID component.ID, cfg component.Config) error
+	RemoveReceiver(pipelineID pipeline.ID, componentID component.ID) error
+}

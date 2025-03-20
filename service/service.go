@@ -32,11 +32,11 @@ import (
 	semconv "go.opentelemetry.io/collector/semconv/v1.26.0"
 	"go.opentelemetry.io/collector/service/extensions"
 	"go.opentelemetry.io/collector/service/internal/builders"
-	"go.opentelemetry.io/collector/service/internal/graph"
 	"go.opentelemetry.io/collector/service/internal/moduleinfo"
 	"go.opentelemetry.io/collector/service/internal/proctelemetry"
 	"go.opentelemetry.io/collector/service/internal/resource"
 	"go.opentelemetry.io/collector/service/internal/status"
+	"go.opentelemetry.io/collector/service/internal/xgraph"
 	"go.opentelemetry.io/collector/service/telemetry"
 )
 
@@ -108,7 +108,7 @@ type Settings struct {
 type Service struct {
 	buildInfo         component.BuildInfo
 	telemetrySettings component.TelemetrySettings
-	host              *graph.Host
+	host              *xgraph.Host
 	collectorConf     *confmap.Conf
 	loggerProvider    log.LoggerProvider
 }
@@ -117,7 +117,7 @@ type Service struct {
 func New(ctx context.Context, set Settings, cfg Config) (*Service, error) {
 	srv := &Service{
 		buildInfo: set.BuildInfo,
-		host: &graph.Host{
+		host: &xgraph.Host{
 			Receivers:  builders.NewReceiver(set.ReceiversConfigs, set.ReceiversFactories),
 			Processors: builders.NewProcessor(set.ProcessorsConfigs, set.ProcessorsFactories),
 			Exporters:  builders.NewExporter(set.ExportersConfigs, set.ExportersFactories),
@@ -358,7 +358,7 @@ func (srv *Service) initExtensions(ctx context.Context, cfg extensions.Config) e
 // Creates the pipeline graph.
 func (srv *Service) initGraph(ctx context.Context, cfg Config) error {
 	var err error
-	if srv.host.Pipelines, err = graph.Build(ctx, graph.Settings{
+	if srv.host.Pipelines, err = xgraph.Build(ctx, xgraph.Settings{
 		Telemetry:        srv.telemetrySettings,
 		BuildInfo:        srv.buildInfo,
 		ReceiverBuilder:  srv.host.Receivers,
