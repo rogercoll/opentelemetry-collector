@@ -72,7 +72,7 @@ func newReceiver(cfg ObsReportSettings) (*ObsReport, error) {
 // The returned context should be used in other calls to the obsreport functions
 // dealing with the same receive operation.
 func (rec *ObsReport) StartTracesOp(operationCtx context.Context) context.Context {
-	return rec.startOp(operationCtx, internal.ReceiveTraceDataOperationSuffix)
+	return rec.startOp(pipeline.RecordPipelineStart(operationCtx), internal.ReceiveTraceDataOperationSuffix)
 }
 
 // EndTracesOp completes the receive operation that was started with
@@ -90,7 +90,7 @@ func (rec *ObsReport) EndTracesOp(
 // The returned context should be used in other calls to the obsreport functions
 // dealing with the same receive operation.
 func (rec *ObsReport) StartLogsOp(operationCtx context.Context) context.Context {
-	return rec.startOp(operationCtx, internal.ReceiverLogsOperationSuffix)
+	return rec.startOp(pipeline.RecordPipelineStart(operationCtx), internal.ReceiverLogsOperationSuffix)
 }
 
 // EndLogsOp completes the receive operation that was started with
@@ -108,7 +108,7 @@ func (rec *ObsReport) EndLogsOp(
 // The returned context should be used in other calls to the obsreport functions
 // dealing with the same receive operation.
 func (rec *ObsReport) StartMetricsOp(operationCtx context.Context) context.Context {
-	return rec.startOp(operationCtx, internal.ReceiverMetricsOperationSuffix)
+	return rec.startOp(pipeline.RecordPipelineStart(operationCtx), internal.ReceiverMetricsOperationSuffix)
 }
 
 // EndMetricsOp completes the receive operation that was started with

@@ -121,3 +121,13 @@ telemetry:
       gauge:
         value_type: int
         async: true
+
+    pipeline_processing_duration_milliseconds:
+      enabled: true
+      stability:
+        level: alpha
+      description: Duration of between when a batch of telemetry in the pipeline was received, and when it was sent by an exporter.
+      unit: ms
+      histogram:
+        value_type: int
+        bucket_boundaries: [1, 10, 100, 500, 1000]

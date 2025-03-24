@@ -44,6 +44,7 @@ type obsReportSender[K request.Request] struct {
 	metricAttr      metric.MeasurementOption
 	itemsSentInst   metric.Int64Counter
 	itemsFailedInst metric.Int64Counter
+	pipelineLatency metric.Int64Histogram
 	next            Sender[K]
 }
 
@@ -57,11 +58,12 @@ func newObsReportSender[K request.Request](set exporter.Settings, signal pipelin
 	expAttr := attribute.String(ExporterKey, idStr)
 
 	or := &obsReportSender[K]{
-		spanName:   ExporterKey + spanNameSep + idStr + spanNameSep + signal.String(),
-		tracer:     metadata.Tracer(set.TelemetrySettings),
-		spanAttrs:  trace.WithAttributes(expAttr, attribute.String(DataTypeKey, signal.String())),
-		metricAttr: metric.WithAttributeSet(attribute.NewSet(expAttr)),
-		next:       next,
+		spanName:        ExporterKey + spanNameSep + idStr + spanNameSep + signal.String(),
+		tracer:          metadata.Tracer(set.TelemetrySettings),
+		spanAttrs:       trace.WithAttributes(expAttr, attribute.String(DataTypeKey, signal.String())),
+		metricAttr:      metric.WithAttributeSet(attribute.NewSet(expAttr)),
+		pipelineLatency: telemetryBuilder.PipelineProcessingDurationMilliseconds,
+		next:            next,
 	}
 
 	switch signal {
@@ -110,6 +112,13 @@ func (ors *obsReportSender[K]) endOp(ctx context.Context, numLogRecords int, err
 	// No metrics recorded for profiles.
 	if ors.itemsFailedInst != nil {
 		ors.itemsFailedInst.Add(ctx, numFailedToSend, ors.metricAttr)
+	}
+
+	if ors.pipelineLatency != nil {
+		pipelineDurations := pipeline.PipelineDuration(ctx)
+		for i := range pipelineDurations {
+			ors.pipelineLatency.Record(ctx, pipelineDurations[i])
+		}
 	}
 
 	span := trace.SpanFromContext(ctx)

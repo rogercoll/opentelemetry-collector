@@ -7,12 +7,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata/metricdatatest"
 
 	"go.opentelemetry.io/collector/component/componenttest"
-	"go.opentelemetry.io/collector/exporter/exporterhelper/internal/metadata"
 )
 
 func TestSetupTelemetry(t *testing.T) {
@@ -37,6 +35,7 @@ func TestSetupTelemetry(t *testing.T) {
 	tb.ExporterSentLogRecords.Add(context.Background(), 1)
 	tb.ExporterSentMetricPoints.Add(context.Background(), 1)
 	tb.ExporterSentSpans.Add(context.Background(), 1)
+	tb.PipelineProcessingDurationMilliseconds.Record(context.Background(), 1)
 	AssertEqualExporterEnqueueFailedLogRecords(t, testTel,
 		[]metricdata.DataPoint[int64]{{Value: 1}},
 		metricdatatest.IgnoreTimestamp())
@@ -69,6 +68,9 @@ func TestSetupTelemetry(t *testing.T) {
 		metricdatatest.IgnoreTimestamp())
 	AssertEqualExporterSentSpans(t, testTel,
 		[]metricdata.DataPoint[int64]{{Value: 1}},
+		metricdatatest.IgnoreTimestamp())
+	AssertEqualPipelineProcessingDurationMilliseconds(t, testTel,
+		[]metricdata.HistogramDataPoint[int64]{{}}, metricdatatest.IgnoreValue(),
 		metricdatatest.IgnoreTimestamp())
 
 	require.NoError(t, testTel.Shutdown(context.Background()))

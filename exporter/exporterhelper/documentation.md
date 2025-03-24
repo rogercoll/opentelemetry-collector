@@ -93,3 +93,11 @@ Number of spans successfully sent to destination. [alpha]
 | Unit | Metric Type | Value Type | Monotonic |
 | ---- | ----------- | ---------- | --------- |
 | {spans} | Sum | Int | true |
+
+### otelcol_pipeline_processing_duration_milliseconds
+
+Duration of between when a batch of telemetry in the pipeline was received, and when it was sent by an exporter. [alpha]
+
+| Unit | Metric Type | Value Type |
+| ---- | ----------- | ---------- |
+| ms | Histogram | Int |

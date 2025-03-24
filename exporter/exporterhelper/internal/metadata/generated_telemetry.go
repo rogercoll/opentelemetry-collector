@@ -25,20 +25,21 @@ func Tracer(settings component.TelemetrySettings) trace.Tracer {
 // TelemetryBuilder provides an interface for components to report telemetry
 // as defined in metadata and user config.
 type TelemetryBuilder struct {
-	meter                             metric.Meter
-	mu                                sync.Mutex
-	registrations                     []metric.Registration
-	ExporterEnqueueFailedLogRecords   metric.Int64Counter
-	ExporterEnqueueFailedMetricPoints metric.Int64Counter
-	ExporterEnqueueFailedSpans        metric.Int64Counter
-	ExporterQueueCapacity             metric.Int64ObservableGauge
-	ExporterQueueSize                 metric.Int64ObservableGauge
-	ExporterSendFailedLogRecords      metric.Int64Counter
-	ExporterSendFailedMetricPoints    metric.Int64Counter
-	ExporterSendFailedSpans           metric.Int64Counter
-	ExporterSentLogRecords            metric.Int64Counter
-	ExporterSentMetricPoints          metric.Int64Counter
-	ExporterSentSpans                 metric.Int64Counter
+	meter                                  metric.Meter
+	mu                                     sync.Mutex
+	registrations                          []metric.Registration
+	ExporterEnqueueFailedLogRecords        metric.Int64Counter
+	ExporterEnqueueFailedMetricPoints      metric.Int64Counter
+	ExporterEnqueueFailedSpans             metric.Int64Counter
+	ExporterQueueCapacity                  metric.Int64ObservableGauge
+	ExporterQueueSize                      metric.Int64ObservableGauge
+	ExporterSendFailedLogRecords           metric.Int64Counter
+	ExporterSendFailedMetricPoints         metric.Int64Counter
+	ExporterSendFailedSpans                metric.Int64Counter
+	ExporterSentLogRecords                 metric.Int64Counter
+	ExporterSentMetricPoints               metric.Int64Counter
+	ExporterSentSpans                      metric.Int64Counter
+	PipelineProcessingDurationMilliseconds metric.Int64Histogram
 }
 
 // TelemetryBuilderOption applies changes to default builder.
@@ -174,6 +175,13 @@ func NewTelemetryBuilder(settings component.TelemetrySettings, options ...Teleme
 		"otelcol_exporter_sent_spans",
 		metric.WithDescription("Number of spans successfully sent to destination. [alpha]"),
 		metric.WithUnit("{spans}"),
+	)
+	errs = errors.Join(errs, err)
+	builder.PipelineProcessingDurationMilliseconds, err = builder.meter.Int64Histogram(
+		"otelcol_pipeline_processing_duration_milliseconds",
+		metric.WithDescription("Duration of between when a batch of telemetry in the pipeline was received, and when it was sent by an exporter. [alpha]"),
+		metric.WithUnit("ms"),
+		metric.WithExplicitBucketBoundaries([]float64{1, 10, 100, 500, 1000}...),
 	)
 	errs = errors.Join(errs, err)
 	return &builder, errs

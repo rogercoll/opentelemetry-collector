@@ -3,13 +3,13 @@
 package metadatatest
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata/metricdatatest"
-
-	"go.opentelemetry.io/collector/component/componenttest"
 )
 
 func AssertEqualExporterEnqueueFailedLogRecords(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
@@ -180,6 +180,21 @@ func AssertEqualExporterSentSpans(t *testing.T, tt *componenttest.Telemetry, dps
 		},
 	}
 	got, err := tt.GetMetric("otelcol_exporter_sent_spans")
+	require.NoError(t, err)
+	metricdatatest.AssertEqual(t, want, got, opts...)
+}
+
+func AssertEqualPipelineProcessingDurationMilliseconds(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.HistogramDataPoint[int64], opts ...metricdatatest.Option) {
+	want := metricdata.Metrics{
+		Name:        "otelcol_pipeline_processing_duration_milliseconds",
+		Description: "Duration of between when a batch of telemetry in the pipeline was received, and when it was sent by an exporter. [alpha]",
+		Unit:        "ms",
+		Data: metricdata.Histogram[int64]{
+			Temporality: metricdata.CumulativeTemporality,
+			DataPoints:  dps,
+		},
+	}
+	got, err := tt.GetMetric("otelcol_pipeline_processing_duration_milliseconds")
 	require.NoError(t, err)
 	metricdatatest.AssertEqual(t, want, got, opts...)
 }

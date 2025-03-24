@@ -10,6 +10,10 @@ receivers:
 exporters:
   debug:
     verbosity: detailed
+  otlp:
+    endpoint: 0.0.0.0:4320
+    tls:
+      insecure: true
 
 service:
   telemetry:
@@ -17,14 +21,14 @@ service:
       level: info
       output_paths:
         # The folder need to be created prior to starting the collector
-        - ${ProgramData}\OpenTelemetry\Collector\Logs\otelcol.log
+        - /tmp/otelcol.log
 
   pipelines:
     traces:
       receivers: [otlp]
-      exporters: [debug]
+      exporters: [debug, otlp]
     metrics:
       receivers: [otlp]
-      exporters: [debug]
+      exporters: [debug, otlp]
 
   extensions: [zpages]
