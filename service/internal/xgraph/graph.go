@@ -17,6 +17,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
@@ -39,6 +40,8 @@ import (
 	"go.opentelemetry.io/collector/service/internal/status"
 	"go.opentelemetry.io/collector/service/pipelines"
 )
+
+var errCannotRemoveOnShutdown = errors.New("cannot remove component while shut down or start up")
 
 // Settings holds configuration for building builtPipelines.
 type Settings struct {
@@ -69,6 +72,66 @@ type Graph struct {
 	telemetry component.TelemetrySettings
 	settings  Settings
 	innerCtx  context.Context
+
+	// write concurrent operations should be protected
+	isStoppingFlag bool
+	isStarted      bool
+	graphMutex     sync.RWMutex
+}
+
+func (g *Graph) addReceiver(host *Host, pipelineID pipeline.ID, recvID component.ID, cfg component.Config) error {
+	// TODO: add sync mechanism concurrent add/remove and start/stop
+	// cannot be added while being stopped
+	g.graphMutex.Lock()
+	defer g.graphMutex.Unlock()
+	if g.isStoppingFlag || !g.isStarted {
+		return errCannotRemoveOnShutdown
+	}
+
+	// insert component cfg to builders
+	err := g.settings.ReceiverBuilder.AddCfg(recvID, cfg)
+	if err != nil {
+		return err
+	}
+
+	// TODO: return error if pipelineID does not exist
+	rcvrNode := g.createReceiver(pipelineID, recvID)
+	g.pipelines[pipelineID].receivers[rcvrNode.ID()] = rcvrNode
+
+	// set edge between receiver and capabilitiesNode
+	g.componentGraph.SetEdge(g.componentGraph.NewEdge(rcvrNode, g.pipelines[pipelineID].capabilitiesNode))
+
+	// build component
+	err = rcvrNode.buildComponent(g.innerCtx, g.telemetry, g.settings.BuildInfo, g.settings.ReceiverBuilder, g.nextConsumers(rcvrNode.ID()))
+	if err != nil {
+		return err
+	}
+
+	return g.startNode(g.innerCtx, host, rcvrNode)
+}
+
+func (g *Graph) removeReceiver(host *Host, pipelineID pipeline.ID, componentID component.ID) error {
+	g.graphMutex.Lock()
+	defer g.graphMutex.Unlock()
+	if g.isStoppingFlag {
+		return errCannotRemoveOnShutdown
+	}
+
+	for _, rcvrNode := range g.pipelines[pipelineID].receivers {
+		if rcvrNode, ok := g.componentGraph.Node(rcvrNode.ID()).(*receiverNode); ok {
+			if rcvrNode.componentID == componentID {
+				// shutdown node
+				err := g.shutdownNode(g.innerCtx, host.Reporter, rcvrNode)
+				if err != nil {
+					return err
+				}
+				// remove edge between receiver and capabilitiesNode
+				host.Pipelines.componentGraph.RemoveNode(rcvrNode.ID())
+			}
+		}
+	}
+
+	return nil
 }
 
 // Build builds a full pipeline graph.
@@ -421,6 +484,11 @@ func (g *Graph) StartAll(ctx context.Context, host *Host) error {
 			return err
 		}
 	}
+
+	g.graphMutex.Lock()
+	g.isStarted = true
+	g.graphMutex.Unlock()
+
 	return nil
 }
 
@@ -458,6 +526,10 @@ func (g *Graph) startNode(ctx context.Context, host *Host, node graph.Node) erro
 }
 
 func (g *Graph) ShutdownAll(ctx context.Context, reporter status.Reporter) error {
+	g.graphMutex.Lock()
+	g.isStoppingFlag = true
+	g.graphMutex.Unlock()
+
 	nodes, err := topo.Sort(g.componentGraph)
 	if err != nil {
 		return err

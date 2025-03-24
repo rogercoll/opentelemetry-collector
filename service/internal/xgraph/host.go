@@ -70,43 +70,11 @@ func (host *Host) GetModuleInfos() moduleinfo.ModuleInfos {
 }
 
 func (host *Host) AddReceiver(pipelineID pipeline.ID, recvID component.ID, cfg component.Config) error {
-	// TODO: add sync mechanism concurrent add/remove and start/stop
-
-	// insert component cfg to builders
-	err := host.Pipelines.settings.ReceiverBuilder.AddCfg(recvID, cfg)
-	if err != nil {
-		return err
-	}
-
-	// TODO: return error if pipelineID does not exist
-	rcvrNode := host.Pipelines.createReceiver(pipelineID, recvID)
-	host.Pipelines.pipelines[pipelineID].receivers[rcvrNode.ID()] = rcvrNode
-
-	// set edge between receiver and capabilitiesNode
-	host.Pipelines.componentGraph.SetEdge(host.Pipelines.componentGraph.NewEdge(rcvrNode, host.Pipelines.pipelines[pipelineID].capabilitiesNode))
-
-	// build component
-	rcvrNode.buildComponent(host.Pipelines.innerCtx, host.Pipelines.telemetry, host.Pipelines.settings.BuildInfo, host.Pipelines.settings.ReceiverBuilder, host.Pipelines.nextConsumers(rcvrNode.ID()))
-
-	return host.Pipelines.startNode(host.Pipelines.innerCtx, host, rcvrNode)
+	return host.Pipelines.addReceiver(host, pipelineID, recvID, cfg)
 }
 
 func (host *Host) RemoveReceiver(pipelineID pipeline.ID, componentID component.ID) error {
-	for _, rcvrNode := range host.Pipelines.pipelines[pipelineID].receivers {
-		if rcvrNode, ok := host.Pipelines.componentGraph.Node(rcvrNode.ID()).(*receiverNode); ok {
-			if rcvrNode.componentID == componentID {
-				// shutdown node
-				err := host.Pipelines.shutdownNode(host.Pipelines.innerCtx, host.Reporter, rcvrNode)
-				if err != nil {
-					return err
-				}
-				// remove edge between receiver and capabilitiesNode
-				host.Pipelines.componentGraph.RemoveNode(rcvrNode.ID())
-			}
-		}
-	}
-
-	return nil
+	return host.Pipelines.removeReceiver(host, pipelineID, componentID)
 }
 
 // Deprecated: [0.79.0] This function will be removed in the future.
