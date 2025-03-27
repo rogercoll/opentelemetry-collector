@@ -17,6 +17,7 @@ func PipelineDuration(ctx context.Context) []int64 {
 		for i := range startTimes {
 			pipelineTimes[i] = time.Since(startTimes[i]).Milliseconds()
 		}
+		return pipelineTimes
 	}
 	return nil
 }
