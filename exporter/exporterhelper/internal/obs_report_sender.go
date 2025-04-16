@@ -10,6 +10,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
+	"go.uber.org/zap"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/exporter"
@@ -46,6 +47,8 @@ type obsReportSender[K request.Request] struct {
 	itemsFailedInst metric.Int64Counter
 	pipelineLatency metric.Int64Histogram
 	next            Sender[K]
+
+	logger *zap.Logger
 }
 
 func newObsReportSender[K request.Request](set exporter.Settings, signal pipeline.Signal, next Sender[K]) (Sender[K], error) {
@@ -64,6 +67,7 @@ func newObsReportSender[K request.Request](set exporter.Settings, signal pipelin
 		metricAttr:      metric.WithAttributeSet(attribute.NewSet(expAttr)),
 		pipelineLatency: telemetryBuilder.PipelineProcessingDurationMilliseconds,
 		next:            next,
+		logger:          set.Logger,
 	}
 
 	switch signal {

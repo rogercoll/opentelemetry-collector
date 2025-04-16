@@ -181,7 +181,7 @@ func NewTelemetryBuilder(settings component.TelemetrySettings, options ...Teleme
 		"otelcol_pipeline_processing_duration_milliseconds",
 		metric.WithDescription("Duration of between when a batch of telemetry in the pipeline was received, and when it was sent by an exporter. [alpha]"),
 		metric.WithUnit("ms"),
-		metric.WithExplicitBucketBoundaries([]float64{1, 10, 100, 500, 1000}...),
+		metric.WithExplicitBucketBoundaries([]float64{1, 10, 50, 100, 250, 500, 750, 1000, 2000}...),
 	)
 	errs = errors.Join(errs, err)
 	return &builder, errs

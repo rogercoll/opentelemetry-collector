@@ -130,4 +130,4 @@ telemetry:
       unit: ms
       histogram:
         value_type: int
-        bucket_boundaries: [1, 10, 100, 500, 1000]
+        bucket_boundaries: [1, 10, 100, 500, 750, 1000, 2000]

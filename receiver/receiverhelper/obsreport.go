@@ -108,7 +108,7 @@ func (rec *ObsReport) EndLogsOp(
 // The returned context should be used in other calls to the obsreport functions
 // dealing with the same receive operation.
 func (rec *ObsReport) StartMetricsOp(operationCtx context.Context) context.Context {
-	return rec.startOp(pipeline.RecordPipelineStart(operationCtx), internal.ReceiverMetricsOperationSuffix)
+	return pipeline.RecordPipelineStart(rec.startOp(operationCtx, internal.ReceiverMetricsOperationSuffix))
 }
 
 // EndMetricsOp completes the receive operation that was started with
