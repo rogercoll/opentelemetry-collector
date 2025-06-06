@@ -11,6 +11,7 @@ import (
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/featuregate"
 	"go.opentelemetry.io/collector/pipeline"
 	"go.opentelemetry.io/collector/service/extensions"
@@ -42,7 +43,8 @@ type Host struct {
 	Pipelines         *Graph
 	ServiceExtensions *extensions.Extensions
 
-	Reporter status.Reporter
+	Reporter      status.Reporter
+	CollectorConf *confmap.Conf
 }
 
 func (host *Host) GetFactory(kind component.Kind, componentType component.Type) component.Factory {

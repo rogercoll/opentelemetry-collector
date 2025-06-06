@@ -79,6 +79,11 @@ func (id *InstanceID) WithPipelines(pipelineIDs ...pipeline.ID) *InstanceID {
 	return instanceID
 }
 
+func (id *InstanceID) Pipelines() []string {
+	delim := string(pipelineDelim)
+	return strings.Split(id.pipelineIDs, delim)
+}
+
 func (id *InstanceID) addPipelines(pipelineIDs []pipeline.ID) {
 	delim := string(pipelineDelim)
 	strIDs := strings.Split(id.pipelineIDs, delim)

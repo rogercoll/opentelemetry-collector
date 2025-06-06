@@ -7,6 +7,7 @@ package hostcapabilities // import "go.opentelemetry.io/collector/service/hostca
 
 import (
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/pipeline"
 	"go.opentelemetry.io/collector/service/internal/moduleinfo"
 )
@@ -33,4 +34,8 @@ type ComponentFactory interface {
 	// GetFactory returns the component factory for the given
 	// component type
 	GetFactory(kind component.Kind, componentType component.Type) component.Factory
+}
+
+type SubComponentReporter interface {
+	SubComponent(componentID component.ID, event *componentstatus.Event) error
 }

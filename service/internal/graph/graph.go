@@ -26,6 +26,7 @@ import (
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/connector"
 	"go.opentelemetry.io/collector/connector/xconnector"
 	"go.opentelemetry.io/collector/consumer"
@@ -628,4 +629,48 @@ type HostWrapper struct {
 
 func (host *HostWrapper) Report(event *componentstatus.Event) {
 	host.Reporter.ReportStatus(host.InstanceID, event)
+}
+
+func (host *HostWrapper) SubComponent(componentID component.ID, event *componentstatus.Event) error {
+	fmt.Println("Received subcomponent event!")
+	fmt.Println(componentID)
+	switch event.Status() {
+	// TODO: cache of already started components
+	case componentstatus.StatusOK:
+		fmt.Println("Updating effective config")
+		partialPipelinesConfig := make(map[string]any)
+		for _, pipeID := range host.InstanceID.Pipelines() {
+			if pipeID != "" {
+				pipeConfig := host.CollectorConf.Get("service::pipelines::" + pipeID + "::receivers").([]interface{})
+				fmt.Printf("PipelineID: %s Config: %s ComponentID: %s\n", pipeID, pipeConfig, componentID)
+				pipeConfig = append(pipeConfig, "redis/created_by_me")
+				partialPipelinesConfig[pipeID] = map[string]any{
+					"receivers": pipeConfig,
+				}
+			}
+		}
+		partialConfig := map[string]any{
+			"service": map[string]any{
+				"pipelines": partialPipelinesConfig,
+			},
+		}
+		fmt.Println(partialConfig)
+		err := host.CollectorConf.Merge(confmap.NewFromStringMap(partialConfig))
+		if err != nil {
+			return err
+		}
+		err = host.ServiceExtensions.NotifyConfig(context.Background(), host.CollectorConf)
+		if err != nil {
+			return err
+		}
+	case componentstatus.StatusStopped:
+		// instancePipes := host.InstanceID.Pipelines()
+		// pipelineKeys := make([]string, len(instancePipes))
+		// for i, pipeID := range host.InstanceID.Pipelines() {
+		// }
+		fmt.Println(host.CollectorConf.ToStringMap())
+	}
+
+	host.Reporter.ReportStatus(host.InstanceID, event)
+	return nil
 }

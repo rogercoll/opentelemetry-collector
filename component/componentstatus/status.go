@@ -84,11 +84,17 @@ func (s Status) String() string {
 
 // Event contains a status and timestamp, and can contain an error
 type Event struct {
-	status Status
-	err    error
+	subComponent string
+	status       Status
+	err          error
 	// TODO: consider if a timestamp is necessary in the default Event struct or is needed only for the healthcheckv2 extension
 	// https://github.com/open-telemetry/opentelemetry-collector/issues/10763
 	timestamp time.Time
+}
+
+// Status returns the sub component ID
+func (ev *Event) SubComponent() string {
+	return ev.subComponent
 }
 
 // Status returns the Status (enum) associated with the Event
@@ -113,6 +119,14 @@ func NewEvent(status Status) *Event {
 	return &Event{
 		status:    status,
 		timestamp: time.Now(),
+	}
+}
+
+func NewSubComponentEvent(subComponent string, status Status) *Event {
+	return &Event{
+		subComponent: subComponent,
+		status:       status,
+		timestamp:    time.Now(),
 	}
 }
 

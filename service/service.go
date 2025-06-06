@@ -129,6 +129,7 @@ func New(ctx context.Context, set Settings, cfg Config) (*Service, error) {
 			ModuleInfos:       set.ModuleInfos,
 			BuildInfo:         set.BuildInfo,
 			AsyncErrorChannel: set.AsyncErrorChannel,
+			CollectorConf:     set.CollectorConf,
 		},
 		collectorConf: set.CollectorConf,
 	}
